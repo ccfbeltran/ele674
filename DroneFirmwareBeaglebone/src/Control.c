@@ -167,7 +167,7 @@ int ControlStart (void) {
 /* Ici, vous devriez le travail du contrôleur (loi de commande) du drone. */ 
 /* Les capteurs ainsi que tout le reste du système devrait être           */
 /* prêt à faire leur travail et il ne reste plus qu'à tout démarrer.      */
-	return retval;
+//	return retval;
 }
 
 

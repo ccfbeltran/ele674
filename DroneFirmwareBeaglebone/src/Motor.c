@@ -134,7 +134,14 @@ void *MotorTask ( void *ptr ) {
 /* A faire! */
 /* Tache qui transmet les nouvelles valeurs de vitesse */
 /* à chaque moteur à interval régulier (5 ms).         */
+
+	pthread_barrier_wait(&(MotorStartBarrier));
+
 	while (MotorActivated) {
+		sem_wait(&MotorTimerSem);
+		if (MotorActivated == 0)
+			break;
+
 //		DOSOMETHING();
 	}
 	pthread_exit(0); /* exit thread */
@@ -147,7 +154,25 @@ int MotorInit (MotorStruct *Motor) {
 /* C'est-à-dire initialiser le Port des moteurs avec la    */
 /* fonction MotorPortInit() et créer la Tâche MotorTask()  */
 /* qui va s'occuper des mises à jours des moteurs en cours */ 
-/* d'exécution.                                            */
+/* d'exécution.
+ */
+	int retval = 0;
+
+	if(MotorPortInit(Motor)){
+		return -1;
+	}
+
+	printf("Creating Moteur thread\n");
+	pthread_barrier_init(&MotorStartBarrier, NULL, 2);
+
+	sem_init(&MotorTimerSem, 0, 0);
+
+	retval = pthread_create(&Motor->MotorThread, NULL, MotorTask, Motor);
+	if (retval) {
+		printf("pthread_create : Impossible de créer le thread MavlinkStatusTask\n");
+		return retval;
+	}
+
 	return 0;
 }
 
@@ -157,7 +182,16 @@ int MotorStart (void) {
 /* A faire! */
 /* Ici, vous devriez démarrer la mise à jour des moteurs (MotorTask).    */ 
 /* Tout le système devrait être prêt à faire leur travail et il ne reste */
-/* plus qu'à tout démarrer.                                              */
+/* plus qu'à tout démarrer.
+ **/
+
+	int retval = 0;
+
+	MotorActivated = 1;
+	pthread_barrier_wait(&(MotorStartBarrier));
+	pthread_barrier_destroy(&MotorStartBarrier);
+	printf("%s Moteur démarré\n", __FUNCTION__);
+
 	return retval;
 }
 
