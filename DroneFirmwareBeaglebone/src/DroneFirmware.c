@@ -72,6 +72,10 @@ void SigTimerHandler (int signo) {
 		if ((Period % MAVLINK_STATUS_PERIOD) == 0)
 			sem_post(&MavlinkStatusTimerSem);
 	}
+	else if(MotorActivated){
+		if ((Period % MOTOR_PERIOD) == 0)
+			sem_post(&MotorTimerSem);
+	}
 	if ((Period % MAIN_PERIOD) == 0)
 		sem_post (&MainTimerSem);
 	Period = (Period + 1) % MAX_PERIOD;
@@ -186,8 +190,8 @@ int main(int argc, char *argv[]) {
 		return -1; /* exit thread */
 	}
 
-//	if ((retval = MotorInit(&Motor)) < 0)
-//		return EXIT_FAILURE;
+	if ((retval = MotorInit(&Motor)) < 0)
+		return EXIT_FAILURE;
 //	if ((retval = SensorsLogsInit(SensorTab)) < 0)
 //		return EXIT_FAILURE;
 //	if ((retval = SensorsInit(SensorTab)) < 0)
@@ -218,7 +222,6 @@ int main(int argc, char *argv[]) {
 	while (ch != 'q') {
 		sem_wait(&MainTimerSem);
 		ch = tolower(getchar_nonblock());
-/********************* Utile pour vos tests avec les moteurs *************************
 		if (ch > 0) {
 			printf("%c", ch);
 			switch (ch) {
@@ -241,12 +244,12 @@ int main(int argc, char *argv[]) {
 			default :	break;
 			}
 		}
-*******************************************************************************************/
+
 	}
 
 	MavlinkStop(&Mavlink);
 //	ControlStop(&Control);
-//	MotorStop(&Motor);
+	MotorStop(&Motor);
 //	SensorsLogsStop(SensorTab);
 //	SensorsStop(SensorTab);
 //	AttitudeStop(AttitudeTab);

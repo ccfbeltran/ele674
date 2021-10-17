@@ -114,13 +114,26 @@ int MotorPortInit(MotorStruct *Motor) {
 	return 0;
 }
 
+void SetPWM(uint16_t mot_filedesc, uint16_t pwm1, uint16_t pwm2, uint16_t pwm3, uint16_t pwm4)
+{
+	uint8_t cmd[5];
+	cmd[0] = 0x20 | ((pwm1&0x1ff)>>4);
+	cmd[1] = ((pwm1&0x1ff)<<4) | ((pwm2&0x1ff)>>5);
+	cmd[2] = ((pwm2&0x1ff)<<3) | ((pwm3&0x1ff)>>6);
+	cmd[3] = ((pwm3&0x1ff)<<2) | ((pwm4&0x1ff)>>7);
+	cmd[4] = ((pwm4&0x1ff)<<1);
+	write(mot_filedesc, cmd, 5);
+}
+
 
 void motor_send(MotorStruct *Motor, int SendMode) {
 /* Fonction utilitaire pour simplifier les transmissions aux moteurs */
 
 	switch (SendMode) {
 	case MOTOR_NONE : 		break;
-	case MOTOR_PWM_ONLY :	/* A faire! */
+	case MOTOR_PWM_ONLY :
+		/* A faire! */
+		SetPWM(Motor->file, Motor->pwm[0], Motor->pwm[1], Motor->pwm[2], Motor->pwm[3]);
 							break;
 	case MOTOR_LED_ONLY :	/* A faire! */
 							break;
@@ -134,6 +147,9 @@ void *MotorTask ( void *ptr ) {
 /* A faire! */
 /* Tache qui transmet les nouvelles valeurs de vitesse */
 /* à chaque moteur à interval régulier (5 ms).         */
+	MotorStruct * Motor;
+	Motor=ptr;
+
 
 	pthread_barrier_wait(&(MotorStartBarrier));
 
@@ -141,6 +157,13 @@ void *MotorTask ( void *ptr ) {
 		sem_wait(&MotorTimerSem);
 		if (MotorActivated == 0)
 			break;
+
+		Motor->pwm[0] = 200;
+		Motor->pwm[1] = 200;
+		Motor->pwm[2] = 200;
+		Motor->pwm[3] = 200;
+
+		motor_send(Motor, MOTOR_PWM_ONLY);
 
 //		DOSOMETHING();
 	}
@@ -169,7 +192,7 @@ int MotorInit (MotorStruct *Motor) {
 
 	retval = pthread_create(&Motor->MotorThread, NULL, MotorTask, Motor);
 	if (retval) {
-		printf("pthread_create : Impossible de créer le thread MavlinkStatusTask\n");
+		printf("pthread_create : Impossible de créer le thread MotorStatusTask\n");
 		return retval;
 	}
 
@@ -199,7 +222,20 @@ int MotorStart (void) {
 
 int MotorStop (MotorStruct *Motor) {
 /* A faire! */
-/* Ici, vous devriez arrêter les moteurs et fermer le Port des moteurs. */ 
-	return 0;
+/* Ici, vous devriez arrêter les moteurs et fermer le Port des moteurs. */
+	int err;
+
+	MotorActivated = 0;
+	sem_post(&MotorTimerSem);
+
+	err = pthread_join(Motor->MotorThread, NULL);
+	if (err) {
+		printf("pthread_join(MotorThread) : Erreur\n");
+		return err;
+	}
+
+	sem_destroy(&MotorTimerSem);
+
+	return err;
 }
 
