@@ -153,15 +153,16 @@ void *MotorTask ( void *ptr ) {
 
 	pthread_barrier_wait(&(MotorStartBarrier));
 
+
 	while (MotorActivated) {
 		sem_wait(&MotorTimerSem);
 		if (MotorActivated == 0)
 			break;
 
-		Motor->pwm[0] = 200;
-		Motor->pwm[1] = 200;
-		Motor->pwm[2] = 200;
-		Motor->pwm[3] = 200;
+		Motor->pwm[0] = 50;
+		Motor->pwm[1] = 50;
+		Motor->pwm[2] = 50;
+		Motor->pwm[3] = 50;
 
 		motor_send(Motor, MOTOR_PWM_ONLY);
 
@@ -188,7 +189,7 @@ int MotorInit (MotorStruct *Motor) {
 	printf("Creating Moteur thread\n");
 	pthread_barrier_init(&MotorStartBarrier, NULL, 2);
 
-	sem_init(&MotorTimerSem, 0, 0);
+	sem_init(&MotorTimerSem, 0, 1);
 
 	retval = pthread_create(&Motor->MotorThread, NULL, MotorTask, Motor);
 	if (retval) {
@@ -196,7 +197,7 @@ int MotorInit (MotorStruct *Motor) {
 		return retval;
 	}
 
-	return 0;
+	return retval;
 }
 
 
