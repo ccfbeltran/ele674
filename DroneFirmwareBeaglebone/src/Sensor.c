@@ -24,6 +24,10 @@ void *SensorTask ( void *ptr ) {
 /* A faire! */
 /* Tache qui sera instancié pour chaque sensor. Elle s'occupe d'aller */
 /* chercher les donnees du sensor.                                    */
+
+	pthread_barrier_wait(&(SensorStartBarrier));
+
+
 	while (SensorsActivated) {
 //		DOSOMETHING();
 	}
@@ -37,7 +41,47 @@ int SensorsInit (SensorStruct SensorTab[NUM_SENSOR]) {
 /* C'est-à-dire de faire les initialisations requises, telles que    */
 /* ouvrir les fichiers des capteurs, et de créer les Tâches qui vont */
 /* s'occuper de réceptionner les échantillons des capteurs.          */
-	return 0;
+//
+
+	// { ACCEL_INIT, GYRO_INIT, MAGNETO_INIT, BAROM_INIT, SONAR_INIT };
+
+	SensorStruct* accel = &(SensorTab[0]);
+	SensorStruct* gyro = &(SensorTab[1]);
+	SensorStruct* magneto = &(SensorTab[2]);
+	SensorStruct* barom = &(SensorTab[3]);
+	SensorStruct* sonar = &(SensorTab[4]);
+
+	int retval = 0;
+
+	accel->File = open(accel->DevName, O_RDONLY);
+	gyro->File = open(gyro->DevName, O_RDONLY);
+	magneto->File = open(magneto->DevName, O_RDONLY);
+	barom->File = open(barom->DevName, O_RDONLY);
+	sonar->File = open(sonar->DevName, O_RDONLY);
+
+
+	if(accel->File < 0 || gyro->File < 0 || magneto->File < 0 ||
+			barom->File < 0 || sonar->File < 0 ){
+		printf("Open : Impossible douvrir un des pilotes\n");
+		return -1;
+	}
+
+	printf("Creating Sensor thread\n");
+	pthread_barrier_init(&SensorStartBarrier, NULL, NUM_SENSOR+1);
+
+
+	retval = pthread_create(&accel->SensorThread, NULL, SensorTask, accel->RawData);
+	retval = pthread_create(&gyro->SensorThread, NULL, SensorTask, gyro->RawData);
+	retval = pthread_create(&magneto->SensorThread, NULL, SensorTask, magneto->RawData);
+	retval = pthread_create(&barom->SensorThread, NULL, SensorTask, barom->RawData);
+	retval = pthread_create(&sonar->SensorThread, NULL, SensorTask, sonar->RawData);
+
+	if (retval) {
+		printf("pthread_create : Impossible de créer le thread MotorStatusTask dans un des pitlotes \n");
+		return retval;
+	}
+
+	return retval;
 };
 
 
@@ -46,6 +90,14 @@ int SensorsStart (void) {
 /* Ici, vous devriez démarrer l'acquisition sur les capteurs.        */ 
 /* Les capteurs ainsi que tout le reste du système devrait être      */
 /* prêt à faire leur travail et il ne reste plus qu'à tout démarrer. */
+
+	int retval = 0;
+
+	SensorsActivated = 1;
+	pthread_barrier_wait(&(SensorStartBarrier));
+	pthread_barrier_destroy(&(SensorStartBarrier));
+	printf("%s Sensors démarré\n", __FUNCTION__);
+
 	return 0;
 }
 
@@ -54,7 +106,30 @@ int SensorsStop (SensorStruct SensorTab[NUM_SENSOR]) {
 /* A faire! */
 /* Ici, vous devriez défaire ce que vous avez fait comme travail dans */
 /* SensorsInit() (toujours verifier les retours de chaque call)...    */ 
-	return 0;
+
+	SensorStruct* accel = &(SensorTab[0]);
+	SensorStruct* gyro = &(SensorTab[1]);
+	SensorStruct* magneto = &(SensorTab[2]);
+	SensorStruct* barom = &(SensorTab[3]);
+	SensorStruct* sonar = &(SensorTab[4]);
+
+
+	int err;
+
+	SensorsActivated = 0;
+
+	err = pthread_join(accel->SensorThread, NULL);
+	err = pthread_join(gyro->SensorThread, NULL);
+	err = pthread_join(magneto->SensorThread, NULL);
+	err = pthread_join(barom->SensorThread, NULL);
+	err = pthread_join(sonar->SensorThread, NULL);
+
+	if (err) {
+		printf("pthread_join(SensorThread) : Erreur\n");
+		return err;
+	}
+
+	return err;
 }
 
 
@@ -81,6 +156,7 @@ void *SensorLogTask ( void *ptr ) {
 
 	printf("%s : Log de %s prêt à démarrer\n", __FUNCTION__, Sensor->Name);
 	pthread_barrier_wait(&(LogStartBarrier));
+	pthread_barrier_wait(&(SensorStartBarrier));
 
 	while (LogActivated) {
 		pthread_mutex_lock(&(Sensor->DataSampleMutex));

@@ -198,8 +198,8 @@ int main(int argc, char *argv[]) {
 //		return EXIT_FAILURE;
 //	if ((retval = AttitudeInit(AttitudeTab)) < 0)
 //		return EXIT_FAILURE;
-	if ((retval = MavlinkInit(&Mavlink, &AttitudeDesire, &AttitudeMesure, IPAddress)) < 0)
-		return EXIT_FAILURE;
+//	if ((retval = MavlinkInit(&Mavlink, &AttitudeDesire, &AttitudeMesure, IPAddress)) < 0)
+//		return EXIT_FAILURE;
 //	if ((retval = ControlInit(&Control)) < 0)
 //		return EXIT_FAILURE;
 
@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
 
 	//SensorsLogsStart();
 
-	MavlinkStart();
+	//MavlinkStart();
 	//ControlStart();
 
 	printf("%s Tout démarré\n", __FUNCTION__);
@@ -248,7 +248,7 @@ int main(int argc, char *argv[]) {
 
 	}
 
-	MavlinkStop(&Mavlink);
+	//MavlinkStop(&Mavlink);
 //	ControlStop(&Control);
 	MotorStop(&Motor);
 //	SensorsLogsStop(SensorTab);

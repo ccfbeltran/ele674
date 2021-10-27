@@ -153,16 +153,16 @@ void *MotorTask ( void *ptr ) {
 
 	pthread_barrier_wait(&(MotorStartBarrier));
 
+	Motor->pwm[0] = 0;
+	Motor->pwm[1] = 0;
+	Motor->pwm[2] = 0;
+	Motor->pwm[3] = 0;
+
 
 	while (MotorActivated) {
 		sem_wait(&MotorTimerSem);
 		if (MotorActivated == 0)
 			break;
-
-		Motor->pwm[0] = 50;
-		Motor->pwm[1] = 50;
-		Motor->pwm[2] = 50;
-		Motor->pwm[3] = 50;
 
 		motor_send(Motor, MOTOR_PWM_ONLY);
 
