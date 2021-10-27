@@ -1,2 +1,7 @@
 .metadata/
-DroneFirmwareBeaglebone/DroneFirmwareBeaglebone/src/*.o
+DroneFirmwareBeaglebone/Debug/src/*.o
+DroneFirmwareBeaglebone/Debug/src/*.d
+DroneFirmwareBeaglebone/Debug/DroneFirmwareBeaglebone
+DroneFirmwareBeaglebone
+DroneCalibration
+DroneFirmware
