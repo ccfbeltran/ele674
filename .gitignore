@@ -1,3 +1,15 @@
+<<<<<<< HEAD
+*
+**
+/**
+/*
+**/
+*/
+!.gitignore
+
+!DroneFirmwareBeaglebone/src/*.c
+!DroneFirmwareBeaglebone/include/*.h
+=======
 .metadata/
 DroneFirmwareBeaglebone/Debug/src/*.o
 DroneFirmwareBeaglebone/Debug/src/*.d
@@ -5,3 +17,4 @@ DroneFirmwareBeaglebone/Debug/DroneFirmwareBeaglebone
 DroneFirmwareBeaglebone
 DroneCalibration
 DroneFirmware
+>>>>>>> Alb

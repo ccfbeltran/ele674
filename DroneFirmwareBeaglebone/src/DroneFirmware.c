@@ -225,22 +225,27 @@ int main(int argc, char *argv[]) {
 		ch = tolower(getchar_nonblock());
 		if (ch > 0) {
 			printf("%c", ch);
+			printf("Motor0=%d \n",Motor.pwm[0]);
+			printf("Motor1=%d\n",Motor.pwm[1]);
+			printf("Motor2=%d\n",Motor.pwm[2]);
+			printf("Motor3=%d\n",Motor.pwm[3]);
 			switch (ch) {
-			case '1' :	Motor.pwm[0] += (Motor.pwm[0] < 510) ? 1 : 0;
+			case '1' :	Motor.pwm[0] += (Motor.pwm[0] < 510) ? 10 : 0;
+						printf("entramos al case1\n");
 						break;
-			case '2' :	Motor.pwm[1] += (Motor.pwm[1] < 510) ? 1 : 0;
+			case '2' :	Motor.pwm[1] += (Motor.pwm[1] < 510) ? 10 : 0;
 						break;
-			case '3' :	Motor.pwm[2] += (Motor.pwm[2] < 510) ? 1 : 0;
+			case '3' :	Motor.pwm[2] += (Motor.pwm[2] < 510) ? 10 : 0;
 						break;
-			case '4' :	Motor.pwm[3] += (Motor.pwm[3] < 510) ? 1 : 0;
+			case '4' :	Motor.pwm[3] += (Motor.pwm[3] < 510) ? 10 : 0;
 						break;
-			case '!' :	Motor.pwm[0] -= (Motor.pwm[0] > 100) ? 1 : 0;
+			case '!' :	Motor.pwm[0] -= (Motor.pwm[0] > 100) ? 10 : 0;
 						break;
-			case '@' :	Motor.pwm[1] -= (Motor.pwm[1] > 100) ? 1 : 0;
+			case '@' :	Motor.pwm[1] -= (Motor.pwm[1] > 100) ? 10 : 0;
 						break;
-			case '#' :	Motor.pwm[2] -= (Motor.pwm[2] > 100) ? 1 : 0;
+			case '#' :	Motor.pwm[2] -= (Motor.pwm[2] > 100) ? 10 : 0;
 						break;
-			case '$' :	Motor.pwm[3] -= (Motor.pwm[3] > 100) ? 1 : 0;
+			case '$' :	Motor.pwm[3] -= (Motor.pwm[3] > 100) ? 10 : 0;
 						break;
 			default :	break;
 			}

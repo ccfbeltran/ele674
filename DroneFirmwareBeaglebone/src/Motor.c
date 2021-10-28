@@ -149,7 +149,10 @@ void *MotorTask ( void *ptr ) {
 /* à chaque moteur à interval régulier (5 ms).         */
 	MotorStruct * Motor;
 	Motor=ptr;
-
+	Motor->pwm[0] = 0;
+	Motor->pwm[1] = 0;
+	Motor->pwm[2] = 0;
+	Motor->pwm[3] = 0;
 
 	pthread_barrier_wait(&(MotorStartBarrier));
 
@@ -164,6 +167,11 @@ void *MotorTask ( void *ptr ) {
 		if (MotorActivated == 0)
 			break;
 
+<<<<<<< HEAD
+
+
+=======
+>>>>>>> Alb
 		motor_send(Motor, MOTOR_PWM_ONLY);
 
 //		DOSOMETHING();
