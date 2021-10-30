@@ -192,12 +192,12 @@ int main(int argc, char *argv[]) {
 
 	if ((retval = MotorInit(&Motor)) < 0)
 		return EXIT_FAILURE;
-//	if ((retval = SensorsLogsInit(SensorTab)) < 0)
-//		return EXIT_FAILURE;
-//	if ((retval = SensorsInit(SensorTab)) < 0)
-//		return EXIT_FAILURE;
-//	if ((retval = AttitudeInit(AttitudeTab)) < 0)
-//		return EXIT_FAILURE;
+	if ((retval = SensorsLogsInit(SensorTab)) < 0)
+		return EXIT_FAILURE;
+	if ((retval = SensorsInit(SensorTab)) < 0)
+		return EXIT_FAILURE;
+	if ((retval = AttitudeInit(AttitudeTab)) < 0)
+		return EXIT_FAILURE;
 //	if ((retval = MavlinkInit(&Mavlink, &AttitudeDesire, &AttitudeMesure, IPAddress)) < 0)
 //		return EXIT_FAILURE;
 //	if ((retval = ControlInit(&Control)) < 0)
@@ -209,10 +209,10 @@ int main(int argc, char *argv[]) {
 
 	MotorStart();
 	printf("%s MotorStart() finish\n", __FUNCTION__);
-	//SensorsStart();
-	//AttitudeStart();
+	SensorsStart();
+	AttitudeStart();
 
-	//SensorsLogsStart();
+	SensorsLogsStart();
 
 	//MavlinkStart();
 	//ControlStart();
@@ -220,44 +220,44 @@ int main(int argc, char *argv[]) {
 	printf("%s Tout démarré\n", __FUNCTION__);
 
 	ch = 0;
-	while (ch != 'q') {
-		sem_wait(&MainTimerSem);
-		ch = tolower(getchar_nonblock());
-		if (ch > 0) {
-			printf("%c", ch);
-			printf("Motor0=%d \n",Motor.pwm[0]);
-			printf("Motor1=%d\n",Motor.pwm[1]);
-			printf("Motor2=%d\n",Motor.pwm[2]);
-			printf("Motor3=%d\n",Motor.pwm[3]);
-			switch (ch) {
-			case '1' :	Motor.pwm[0] += (Motor.pwm[0] < 510) ? 10 : 0;
-						printf("entramos al case1\n");
-						break;
-			case '2' :	Motor.pwm[1] += (Motor.pwm[1] < 510) ? 10 : 0;
-						break;
-			case '3' :	Motor.pwm[2] += (Motor.pwm[2] < 510) ? 10 : 0;
-						break;
-			case '4' :	Motor.pwm[3] += (Motor.pwm[3] < 510) ? 10 : 0;
-						break;
-			case '!' :	Motor.pwm[0] -= (Motor.pwm[0] > 100) ? 10 : 0;
-						break;
-			case '@' :	Motor.pwm[1] -= (Motor.pwm[1] > 100) ? 10 : 0;
-						break;
-			case '#' :	Motor.pwm[2] -= (Motor.pwm[2] > 100) ? 10 : 0;
-						break;
-			case '$' :	Motor.pwm[3] -= (Motor.pwm[3] > 100) ? 10 : 0;
-						break;
-			default :	break;
-			}
-		}
-
-	}
+//	while (ch != 'q') {
+//		sem_wait(&MainTimerSem);
+//		ch = tolower(getchar_nonblock());
+//		if (ch > 0) {
+//			printf("%c", ch);
+//			printf("Motor0=%d \n",Motor.pwm[0]);
+//			printf("Motor1=%d\n",Motor.pwm[1]);
+//			printf("Motor2=%d\n",Motor.pwm[2]);
+//			printf("Motor3=%d\n",Motor.pwm[3]);
+//			switch (ch) {
+//			case '1' :	Motor.pwm[0] += (Motor.pwm[0] < 510) ? 10 : 0;
+//						printf("entramos al case1\n");
+//						break;
+//			case '2' :	Motor.pwm[1] += (Motor.pwm[1] < 510) ? 10 : 0;
+//						break;
+//			case '3' :	Motor.pwm[2] += (Motor.pwm[2] < 510) ? 10 : 0;
+//						break;
+//			case '4' :	Motor.pwm[3] += (Motor.pwm[3] < 510) ? 10 : 0;
+//						break;
+//			case '!' :	Motor.pwm[0] -= (Motor.pwm[0] > 100) ? 10 : 0;
+//						break;
+//			case '@' :	Motor.pwm[1] -= (Motor.pwm[1] > 100) ? 10 : 0;
+//						break;
+//			case '#' :	Motor.pwm[2] -= (Motor.pwm[2] > 100) ? 10 : 0;
+//						break;
+//			case '$' :	Motor.pwm[3] -= (Motor.pwm[3] > 100) ? 10 : 0;
+//						break;
+//			default :	break;
+//			}
+//		}
+//
+//	}
 
 	//MavlinkStop(&Mavlink);
 //	ControlStop(&Control);
 	MotorStop(&Motor);
-//	SensorsLogsStop(SensorTab);
-//	SensorsStop(SensorTab);
+	SensorsLogsStop(SensorTab);
+	SensorsStop(SensorTab);
 //	AttitudeStop(AttitudeTab);
 
 	pthread_spin_destroy(&(AttitudeDesire.AttitudeLock));

@@ -33,8 +33,6 @@ void *SensorTask ( void *ptr ) {
 	/*on transforme notre pointeur vide en pointer SensorRawData*/
 	SensorStruct *Sensor = (SensorStruct *)ptr;
 
-
-
 	while (SensorsActivated) {
 		/*lire la donne du capteur et le garder dans sonr_raw_data*/
 
@@ -50,12 +48,10 @@ void *SensorTask ( void *ptr ) {
 		pthread_mutex_unlock(&(Sensor->DataSampleMutex));
 
 		/*on envoie la donne dans le log pour pouvoir l'afficher*/
-		InitSensorLog(Sensor->RawData);
-		if ((retval = InitSensorLog(Sensor->RawData)) < 0) {
-			printf("%s : Impossible d'initialiser log pour rawdata. => retval = %d\n", __FUNCTION__, retval);
-			return -1;
-		}
-
+//		InitSensorLog(Sensor->RawData);
+//		if ((retval = InitSensorLog(Sensor->RawData)) < 0) {
+//			printf("%s : Impossible d'initialiser log pour rawdata. => retval = %d\n", __FUNCTION__, retval);
+//		}
 
 //		DOSOMETHING();
 	}
@@ -73,62 +69,31 @@ int SensorsInit (SensorStruct SensorTab[NUM_SENSOR]) {
 
 	// { ACCEL_INIT, GYRO_INIT, MAGNETO_INIT, BAROM_INIT, SONAR_INIT };
 
-	SensorStruct* accel = &(SensorTab[0]);
-	SensorStruct* gyro = &(SensorTab[1]);
-	SensorStruct* magneto = &(SensorTab[2]);
-	SensorStruct* barom = &(SensorTab[3]);
-	SensorStruct* sonar = &(SensorTab[4]);
-	accel->DataIdx=0;
-	gyro->DataIdx=0;
-	magneto->DataIdx=0;
-	barom->DataIdx=0;
-	sonar->DataIdx=0;
 	int retval = 0;
 
-	for(int i =0;i<NUM_SENSOR;i++)
+	for(int i =0; i < NUM_SENSOR; i++)
 	{
-	pthread_mutex_init(&(SensorTab[i].DataSampleMutex), NULL);
-	pthread_spin_init(&(SensorTab[i].DataLock), PTHREAD_PROCESS_PRIVATE);
-	pthread_cond_init(&(SensorTab[i].DataNewSampleCondVar), NULL);
+		pthread_mutex_init(&(SensorTab[i].DataSampleMutex), NULL);
+		pthread_spin_init(&(SensorTab[i].DataLock), PTHREAD_PROCESS_PRIVATE);
+		pthread_cond_init(&(SensorTab[i].DataNewSampleCondVar), NULL);
+
+		SensorTab[i].File = open(SensorTab[i].DevName, O_RDONLY);
+
+		if(SensorTab[i].File < 0){
+			printf("Open capteur %d: Impossible douvrir\n", i);
+			return -1;
+		}
+
+		retval = pthread_create(&(SensorTab[i].SensorThread), NULL, SensorTask, (void*) &(SensorTab[i]));
+
+		if(retval){
+			printf("pthread_create : Impossible le thread %d\n", i);
+			return retval;
+		}
 	}
-
-	pthread_mutex_init(&accel->DataSampleMutex, NULL);
-	pthread_mutex_init(&gyro->DataSampleMutex, NULL);
-	pthread_mutex_init(&magneto->DataSampleMutex, NULL);
-	pthread_mutex_init(&barom->DataSampleMutex, NULL);
-	pthread_mutex_init(&sonar->DataSampleMutex, NULL);
-
-
-
-	accel->File = open(accel->DevName, O_RDONLY);
-	gyro->File = open(gyro->DevName, O_RDONLY);
-	magneto->File = open(magneto->DevName, O_RDONLY);
-	barom->File = open(barom->DevName, O_RDONLY);
-	sonar->File = open(sonar->DevName, O_RDONLY);
-
-
-	if(accel->File < 0 || gyro->File < 0 || magneto->File < 0 ||
-			barom->File < 0 || sonar->File < 0 ){
-		printf("Open : Impossible douvrir un des pilotes\n");
-		return -1;
-	}
-
-	printf("Creating Sensor thread\n");
 	pthread_barrier_init(&SensorStartBarrier, NULL, NUM_SENSOR+1);
 
-
-
-
-	retval = pthread_create(&accel->SensorThread, NULL, SensorTask, (void*)accel);
-	retval = pthread_create(&gyro->SensorThread, NULL, SensorTask,(void*) gyro);
-	retval = pthread_create(&magneto->SensorThread, NULL, SensorTask, (void*)magneto);
-	retval = pthread_create(&barom->SensorThread, NULL, SensorTask,(void*) barom);
-	retval = pthread_create(&sonar->SensorThread, NULL, SensorTask, (void*)sonar);
-
-	if (retval) {
-		printf("pthread_create : Impossible de créer le thread MotorStatusTask dans un des pitlotes \n");
-		return retval;
-	}
+	printf("SensorsInit succes\n");
 
 	return retval;
 };
@@ -140,13 +105,10 @@ int SensorsStart (void) {
 /* Les capteurs ainsi que tout le reste du système devrait être      */
 /* prêt à faire leur travail et il ne reste plus qu'à tout démarrer. */
 
-	int retval = 0;
-
 	SensorsActivated = 1;
 	pthread_barrier_wait(&(SensorStartBarrier));
 	pthread_barrier_destroy(&(SensorStartBarrier));
 	printf("%s Sensors démarré\n", __FUNCTION__);
-
 
 	return 0;
 }
@@ -157,26 +119,20 @@ int SensorsStop (SensorStruct SensorTab[NUM_SENSOR]) {
 /* Ici, vous devriez défaire ce que vous avez fait comme travail dans */
 /* SensorsInit() (toujours verifier les retours de chaque call)...    */ 
 
-	SensorStruct* accel = &(SensorTab[0]);
-	SensorStruct* gyro = &(SensorTab[1]);
-	SensorStruct* magneto = &(SensorTab[2]);
-	SensorStruct* barom = &(SensorTab[3]);
-	SensorStruct* sonar = &(SensorTab[4]);
-
-
-	int err;
+	int err = 0;
 
 	SensorsActivated = 0;
 
-	err = pthread_join(accel->SensorThread, NULL);
-	err = pthread_join(gyro->SensorThread, NULL);
-	err = pthread_join(magneto->SensorThread, NULL);
-	err = pthread_join(barom->SensorThread, NULL);
-	err = pthread_join(sonar->SensorThread, NULL);
+	for(int i = 0; i < NUM_SENSOR; i++){
+		err	= pthread_join(SensorTab[i].SensorThread, NULL);
 
-	if (err) {
-		printf("pthread_join(SensorThread) : Erreur\n");
-		return err;
+		if(err){
+			printf("pthread_join(SensorThread[%d]) : Erreur\n", i);
+			return err;
+		}
+		pthread_mutex_destroy(&(SensorTab[i].DataSampleMutex));
+		pthread_spin_destroy(&(SensorTab[i].DataLock));
+		pthread_cond_destroy(&(SensorTab[i].DataNewSampleCondVar));
 	}
 
 	return err;
