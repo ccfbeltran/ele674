@@ -80,10 +80,10 @@ int SensorsInit (SensorStruct SensorTab[NUM_SENSOR]) {
 		SensorTab[i].File = open(SensorTab[i].DevName, O_RDONLY);
 
 		if(SensorTab[i].File < 0){
-			printf("Open capteur %d: Impossible douvrir\n", i);
+			printf("Open capteur %d and DevName %s: Impossible douvrir\n", i, SensorTab[i].DevName);
 			return -1;
 		}
-
+		printf("Open capteur %d succes\n", i);
 		retval = pthread_create(&(SensorTab[i].SensorThread), NULL, SensorTask, (void*) &(SensorTab[i]));
 
 		if(retval){
