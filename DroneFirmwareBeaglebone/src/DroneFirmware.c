@@ -192,8 +192,10 @@ int main(int argc, char *argv[]) {
 
 	if ((retval = MotorInit(&Motor)) < 0)
 		return EXIT_FAILURE;
-//	if ((retval = SensorsLogsInit(SensorTab)) < 0)
-//		return EXIT_FAILURE;
+	if ((retval = SensorsInit(SensorTab)) < 0)
+		return EXIT_FAILURE;
+	if ((retval = SensorsLogsInit(SensorTab)) < 0)
+		return EXIT_FAILURE;
 //	if ((retval = SensorsInit(SensorTab)) < 0)
 //		return EXIT_FAILURE;
 //	if ((retval = AttitudeInit(AttitudeTab)) < 0)
@@ -209,10 +211,11 @@ int main(int argc, char *argv[]) {
 
 	MotorStart();
 	printf("%s MotorStart() finish\n", __FUNCTION__);
-	//SensorsStart();
+	SensorsStart();
+	printf("%s SensorsStart() finish\n", __FUNCTION__);
 	//AttitudeStart();
 
-	//SensorsLogsStart();
+	SensorsLogsStart();
 
 	//MavlinkStart();
 	//ControlStart();
@@ -231,7 +234,6 @@ int main(int argc, char *argv[]) {
 			printf("Motor3=%d\n",Motor.pwm[3]);
 			switch (ch) {
 			case '1' :	Motor.pwm[0] += (Motor.pwm[0] < 510) ? 10 : 0;
-						printf("entramos al case1\n");
 						break;
 			case '2' :	Motor.pwm[1] += (Motor.pwm[1] < 510) ? 10 : 0;
 						break;
@@ -239,13 +241,13 @@ int main(int argc, char *argv[]) {
 						break;
 			case '4' :	Motor.pwm[3] += (Motor.pwm[3] < 510) ? 10 : 0;
 						break;
-			case '!' :	Motor.pwm[0] -= (Motor.pwm[0] > 100) ? 10 : 0;
+			case '5' :	Motor.pwm[0] -= (Motor.pwm[0] > 100) ? 10 : 0;
 						break;
-			case '@' :	Motor.pwm[1] -= (Motor.pwm[1] > 100) ? 10 : 0;
+			case '6' :	Motor.pwm[1] -= (Motor.pwm[1] > 100) ? 10 : 0;
 						break;
-			case '#' :	Motor.pwm[2] -= (Motor.pwm[2] > 100) ? 10 : 0;
+			case '7' :	Motor.pwm[2] -= (Motor.pwm[2] > 100) ? 10 : 0;
 						break;
-			case '$' :	Motor.pwm[3] -= (Motor.pwm[3] > 100) ? 10 : 0;
+			case '8' :	Motor.pwm[3] -= (Motor.pwm[3] > 100) ? 10 : 0;
 						break;
 			default :	break;
 			}
@@ -256,8 +258,8 @@ int main(int argc, char *argv[]) {
 	//MavlinkStop(&Mavlink);
 //	ControlStop(&Control);
 	MotorStop(&Motor);
-//	SensorsLogsStop(SensorTab);
-//	SensorsStop(SensorTab);
+	SensorsLogsStop(SensorTab);
+	SensorsStop(SensorTab);
 //	AttitudeStop(AttitudeTab);
 
 	pthread_spin_destroy(&(AttitudeDesire.AttitudeLock));

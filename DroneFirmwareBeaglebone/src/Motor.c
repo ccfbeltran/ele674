@@ -167,6 +167,7 @@ void *MotorTask ( void *ptr ) {
 
 //		DOSOMETHING();
 	}
+	printf("MotorTask succes\n");
 	pthread_exit(0); /* exit thread */
 }
 
@@ -187,6 +188,7 @@ int MotorInit (MotorStruct *Motor) {
 
 	printf("Creating Moteur thread\n");
 	pthread_barrier_init(&MotorStartBarrier, NULL, 2);
+	printf("Creating Moteur thread2\n");
 
 	sem_init(&MotorTimerSem, 0, 1);
 
