@@ -40,7 +40,18 @@ void *SensorTask ( void *ptr ) {
 
 		pthread_mutex_lock(&(Sensor->DataSampleMutex));
 		pthread_spin_lock(&(Sensor->DataLock));
-		Sensor->RawData[Sensor->DataIdx++]=tampon_raw_data;
+		Sensor->RawData[Sensor->DataIdx]=tampon_raw_data;
+
+		if(Sensor->type == SONAR || Sensor->type == BAROMETRE){
+			Sensor->Data[Sensor->DataIdx].Data[0] = Sensor->RawData[Sensor->DataIdx].data[0]*Sensor->Param->Conversion;
+		}
+		else{
+			Sensor->Data[Sensor->DataIdx].Data[0] = Sensor->RawData[Sensor->DataIdx].data[0]*Sensor->Param->Conversion;
+			Sensor->Data[Sensor->DataIdx].Data[1] = Sensor->RawData[Sensor->DataIdx].data[1]*Sensor->Param->Conversion;
+			Sensor->Data[Sensor->DataIdx].Data[2] = Sensor->RawData[Sensor->DataIdx].data[2]*Sensor->Param->Conversion;
+		}
+		Sensor->DataIdx++;
+
 		Sensor->DataIdx=Sensor->DataIdx % DATABUFSIZE;
 		pthread_spin_unlock(&(Sensor->DataLock));
 
@@ -70,7 +81,7 @@ int SensorsInit (SensorStruct SensorTab[NUM_SENSOR]) {
 	// { ACCEL_INIT, GYRO_INIT, MAGNETO_INIT, BAROM_INIT, SONAR_INIT };
 
 	int retval = 0;
-
+	pthread_barrier_init(&SensorStartBarrier, NULL, NUM_SENSOR + 1);
 	for(int i =0; i < NUM_SENSOR; i++)
 	{
 		pthread_mutex_init(&(SensorTab[i].DataSampleMutex), NULL);
@@ -91,7 +102,6 @@ int SensorsInit (SensorStruct SensorTab[NUM_SENSOR]) {
 			return retval;
 		}
 	}
-	pthread_barrier_init(&SensorStartBarrier, NULL, NUM_SENSOR+1);
 
 	printf("SensorsInit succes\n");
 
@@ -162,7 +172,6 @@ void *SensorLogTask ( void *ptr ) {
 
 	printf("%s : Log de %s prêt à démarrer\n", __FUNCTION__, Sensor->Name);
 	pthread_barrier_wait(&(LogStartBarrier));
-	pthread_barrier_wait(&(SensorStartBarrier));
 
 	while (LogActivated) {
 		pthread_mutex_lock(&(Sensor->DataSampleMutex));
@@ -251,6 +260,7 @@ int SensorsLogsInit (SensorStruct SensorTab[]) {
 
 	for (i = 0; i < NUM_SENSOR; i++) {
 		if (SensorTab[i].DoLog == 1) {
+			printf("SensorTab[%d] =  %s\n", i, SensorTab[i].DevName);
 			if ((retval = InitSensorLog(&SensorTab[i])) < 0) {
 				printf("%s : Impossible d'initialiser log de %s => retval = %d\n", __FUNCTION__, SensorTab[i].Name, retval);
 				return -1;
