@@ -158,7 +158,21 @@ int ControlInit (ControlStruct *Control) {
 /* de créer la Tâche ControlTask() qui va faire calculer      */
 /* les nouvelles vitesses des moteurs, basé sur l'attitude    */
 /* désirée du drone et son attitude actuelle (voir capteurs). */
-	return 0;
+	int retval = 0;
+
+	pthread_barrier_init(&ControlStartBarrier, NULL,  2);
+	pthread_spin_init(&(Control->AttitudeDesire->AttitudeLock), PTHREAD_PROCESS_PRIVATE);
+	sem_init(&ControlTimerSem, 0, 1);
+
+	retval = pthread_create(&Control->ControlThread, NULL, ControlTask, Control);
+	if (retval) {
+		printf("pthread_create : Impossible de créer le thread ControlTask\n");
+		return retval;
+	}
+
+	return retval;
+
+
 }
 
 
@@ -168,6 +182,17 @@ int ControlStart (void) {
 /* Les capteurs ainsi que tout le reste du système devrait être           */
 /* prêt à faire leur travail et il ne reste plus qu'à tout démarrer.      */
 //	return retval;
+
+
+	int retval = 0;
+
+	ControlActivated = 1;
+	pthread_barrier_wait(&ControlStartBarrier);
+	pthread_barrier_destroy(&ControlStartBarrier);
+	printf("%s Control démarré\n", __FUNCTION__);
+
+	return retval;
+
 }
 
 
@@ -175,7 +200,22 @@ int ControlStart (void) {
 int ControlStop (ControlStruct *Control) {
 /* A faire! */
 /* Ici, vous devriez arrêter le contrôleur du drone.    */ 
-	return 0;
+
+	int err = 0;
+
+	ControlActivated = 0;
+	sem_post(&ControlTimerSem);
+
+	err = pthread_join(ControlTask, NULL);
+	if (err) {
+		printf("pthread_join(ControlTask) : Erreur\n");
+		return err;
+	}
+
+	sem_destroy(&ControlTimerSem);
+
+	return err;
 }
+
 
 

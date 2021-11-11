@@ -76,8 +76,13 @@ void SigTimerHandler (int signo) {
 		if ((Period % MOTOR_PERIOD) == 0)
 			sem_post(&MotorTimerSem);
 	}
+	if(ControlActivated){
+		if ((Period % CONTROL_PERIOD) == 0)
+			sem_post(&ControlTimerSem);
+	}
 	if ((Period % MAIN_PERIOD) == 0)
 		sem_post (&MainTimerSem);
+
 	Period = (Period + 1) % MAX_PERIOD;
 }
 
@@ -192,18 +197,16 @@ int main(int argc, char *argv[]) {
 
 	if ((retval = MotorInit(&Motor)) < 0)
 		return EXIT_FAILURE;
-	if ((retval = SensorsInit(SensorTab)) < 0)
-		return EXIT_FAILURE;
 	if ((retval = SensorsLogsInit(SensorTab)) < 0)
 		return EXIT_FAILURE;
-//	if ((retval = SensorsInit(SensorTab)) < 0)
-//		return EXIT_FAILURE;
-//	if ((retval = AttitudeInit(AttitudeTab)) < 0)
-//		return EXIT_FAILURE;
-//	if ((retval = MavlinkInit(&Mavlink, &AttitudeDesire, &AttitudeMesure, IPAddress)) < 0)
-//		return EXIT_FAILURE;
-//	if ((retval = ControlInit(&Control)) < 0)
-//		return EXIT_FAILURE;
+	if ((retval = SensorsInit(SensorTab)) < 0)
+		return EXIT_FAILURE;
+	if ((retval = AttitudeInit(AttitudeTab)) < 0)
+		return EXIT_FAILURE;
+	if ((retval = MavlinkInit(&Mavlink, &AttitudeDesire, &AttitudeMesure, IPAddress)) < 0)
+		return EXIT_FAILURE;
+	if ((retval = ControlInit(&Control)) < 0)
+		return EXIT_FAILURE;
 
 	printf("%s Tout initialisé\n", __FUNCTION__);
 
@@ -213,12 +216,12 @@ int main(int argc, char *argv[]) {
 	printf("%s MotorStart() finish\n", __FUNCTION__);
 	SensorsStart();
 	printf("%s SensorsStart() finish\n", __FUNCTION__);
-	//AttitudeStart();
+	AttitudeStart();
 
 	SensorsLogsStart();
 
-	//MavlinkStart();
-	//ControlStart();
+	MavlinkStart();
+	ControlStart();
 
 	printf("%s Tout démarré\n", __FUNCTION__);
 
@@ -255,12 +258,12 @@ int main(int argc, char *argv[]) {
 
 	}
 
-	//MavlinkStop(&Mavlink);
-//	ControlStop(&Control);
+	MavlinkStop(&Mavlink);
+	ControlStop(&Control);
 	MotorStop(&Motor);
 	SensorsLogsStop(SensorTab);
 	SensorsStop(SensorTab);
-//	AttitudeStop(AttitudeTab);
+	AttitudeStop(AttitudeTab);
 
 	pthread_spin_destroy(&(AttitudeDesire.AttitudeLock));
 	pthread_spin_destroy(&(AttitudeMesure.AttitudeLock));

@@ -27,18 +27,26 @@ void *SensorTask ( void *ptr ) {
 /* chercher les donnees du sensor.                                    */
 	uint32_t retval;
 	SensorRawData tampon_raw_data;
-
+	uint64_t time_stamp_avant=0;
 
 	pthread_barrier_wait(&(SensorStartBarrier));
 	/*on transforme notre pointeur vide en pointer SensorRawData*/
 	SensorStruct *Sensor = (SensorStruct *)ptr;
 
 	while (SensorsActivated) {
+
+
+
+
 		/*lire la donne du capteur et le garder dans sonr_raw_data*/
 
 		read(Sensor->File,&tampon_raw_data,sizeof(SensorRawData));
 
+
+
 		pthread_mutex_lock(&(Sensor->DataSampleMutex));
+		Sensor->DataIdx++;
+		Sensor->DataIdx=Sensor->DataIdx % DATABUFSIZE;
 		pthread_spin_lock(&(Sensor->DataLock));
 		Sensor->RawData[Sensor->DataIdx]=tampon_raw_data;
 
@@ -50,9 +58,13 @@ void *SensorTask ( void *ptr ) {
 			Sensor->Data[Sensor->DataIdx].Data[1] = Sensor->RawData[Sensor->DataIdx].data[1]*Sensor->Param->Conversion;
 			Sensor->Data[Sensor->DataIdx].Data[2] = Sensor->RawData[Sensor->DataIdx].data[2]*Sensor->Param->Conversion;
 		}
-		Sensor->DataIdx++;
+		/*on ajuste le time stamp*/
+		Sensor->Data[Sensor->DataIdx].TimeDelay= tampon_raw_data.timestamp-time_stamp_avant;
+		/*on sauvegarde la valeur precedante*/
+		time_stamp_avant=tampon_raw_data.timestamp;
 
-		Sensor->DataIdx=Sensor->DataIdx % DATABUFSIZE;
+
+
 		pthread_spin_unlock(&(Sensor->DataLock));
 
 		pthread_cond_broadcast(&(Sensor->DataNewSampleCondVar));
