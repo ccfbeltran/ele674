@@ -20,6 +20,7 @@ pthread_mutex_t 	Log_Mutex;
 uint8_t  SensorsActivated 	= 0;
 uint8_t  LogActivated  	  	= 0;
 uint8_t  numLogOutput 	  	= 0;
+uint8_t  init_gyro 			= 0;
 
 void *SensorTask ( void *ptr ) {
 /* A faire! */
@@ -35,14 +36,9 @@ void *SensorTask ( void *ptr ) {
 
 	while (SensorsActivated) {
 
-
-
-
 		/*lire la donne du capteur et le garder dans sonr_raw_data*/
 
 		read(Sensor->File,&tampon_raw_data,sizeof(SensorRawData));
-
-
 
 		pthread_mutex_lock(&(Sensor->DataSampleMutex));
 		Sensor->DataIdx++;
@@ -51,32 +47,57 @@ void *SensorTask ( void *ptr ) {
 		Sensor->RawData[Sensor->DataIdx]=tampon_raw_data;
 
 		if(Sensor->type == SONAR || Sensor->type == BAROMETRE){
-			Sensor->Data[Sensor->DataIdx].Data[0] = Sensor->RawData[Sensor->DataIdx].data[0]*Sensor->Param->Conversion;
+
+			Sensor->Data[Sensor->DataIdx].Data[0] = 0;
+
+			for(int i = 0; i < 3; i++){
+				Sensor->Data[Sensor->DataIdx].Data[0] += Sensor->Param->alpha[0][i]*(Sensor->RawData[Sensor->DataIdx].data[i]*Sensor->Param->Conversion);
+			}
+
+			Sensor->Data[Sensor->DataIdx].Data[0] += Sensor->Param->beta[0];
+		}
+		//Calibration du Gyroscope
+		else if(Sensor->type == GYROSCOPE && !init_gyro){
+			init_gyro = 1;
+
+			for(int i = 0; i < 100; i++){
+				Sensor->Param->beta[0] -= Sensor->RawData[Sensor->DataIdx].data[0];
+				Sensor->Param->beta[1] -= Sensor->RawData[Sensor->DataIdx].data[1];
+				Sensor->Param->beta[2] -= Sensor->RawData[Sensor->DataIdx].data[2];
+			}
+
+			Sensor->Param->beta[0] /= 100;
+			Sensor->Param->beta[1] /= 100;
+			Sensor->Param->beta[2] /= 100;
+
+			printf("Calibration du Gyroscope done \n");
 		}
 		else{
-			Sensor->Data[Sensor->DataIdx].Data[0] = Sensor->RawData[Sensor->DataIdx].data[0]*Sensor->Param->Conversion;
-			Sensor->Data[Sensor->DataIdx].Data[1] = Sensor->RawData[Sensor->DataIdx].data[1]*Sensor->Param->Conversion;
-			Sensor->Data[Sensor->DataIdx].Data[2] = Sensor->RawData[Sensor->DataIdx].data[2]*Sensor->Param->Conversion;
+			 // x', y', z' a zero
+			Sensor->Data[Sensor->DataIdx].Data[0] = 0;
+			Sensor->Data[Sensor->DataIdx].Data[1] = 0;
+			Sensor->Data[Sensor->DataIdx].Data[2] = 0;
+
+			//Calcul la matrice alpha avec x,y,z. ------> x, y, z = Rawdata*conversion
+			for(int i = 0; i < 3; i++){
+				Sensor->Data[Sensor->DataIdx].Data[0] += Sensor->Param->alpha[0][i]*(Sensor->RawData[Sensor->DataIdx].data[i]*Sensor->Param->Conversion);
+				Sensor->Data[Sensor->DataIdx].Data[1] += Sensor->Param->alpha[0][i]*(Sensor->RawData[Sensor->DataIdx].data[i]*Sensor->Param->Conversion);
+				Sensor->Data[Sensor->DataIdx].Data[2] += Sensor->Param->alpha[0][i]*(Sensor->RawData[Sensor->DataIdx].data[i]*Sensor->Param->Conversion);
+			}
+			//x', y', z' + Beta
+			Sensor->Data[Sensor->DataIdx].Data[0] += Sensor->Param->beta[0];
+			Sensor->Data[Sensor->DataIdx].Data[1] += Sensor->Param->beta[1];
+			Sensor->Data[Sensor->DataIdx].Data[2] += Sensor->Param->beta[2];
 		}
 		/*on ajuste le time stamp*/
 		Sensor->Data[Sensor->DataIdx].TimeDelay= tampon_raw_data.timestamp-time_stamp_avant;
 		/*on sauvegarde la valeur precedante*/
 		time_stamp_avant=tampon_raw_data.timestamp;
 
-
-
 		pthread_spin_unlock(&(Sensor->DataLock));
 
 		pthread_cond_broadcast(&(Sensor->DataNewSampleCondVar));
 		pthread_mutex_unlock(&(Sensor->DataSampleMutex));
-
-		/*on envoie la donne dans le log pour pouvoir l'afficher*/
-//		InitSensorLog(Sensor->RawData);
-//		if ((retval = InitSensorLog(Sensor->RawData)) < 0) {
-//			printf("%s : Impossible d'initialiser log pour rawdata. => retval = %d\n", __FUNCTION__, retval);
-//		}
-
-//		DOSOMETHING();
 	}
 	pthread_exit(0); /* exit thread */
 }
@@ -106,6 +127,7 @@ int SensorsInit (SensorStruct SensorTab[NUM_SENSOR]) {
 			printf("Open capteur %d and DevName %s: Impossible douvrir\n", i, SensorTab[i].DevName);
 			return -1;
 		}
+
 		printf("Open capteur %d succes\n", i);
 		retval = pthread_create(&(SensorTab[i].SensorThread), NULL, SensorTask, (void*) &(SensorTab[i]));
 
