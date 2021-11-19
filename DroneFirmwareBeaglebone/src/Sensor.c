@@ -57,20 +57,21 @@ void *SensorTask ( void *ptr ) {
 			Sensor->Data[Sensor->DataIdx].Data[0] += Sensor->Param->beta[0];
 		}
 		//Calibration du Gyroscope
-		else if(Sensor->type == GYROSCOPE && !init_gyro){
-			init_gyro = 1;
+		else if(Sensor->type == GYROSCOPE && init_gyro < 100){
 
-			for(int i = 0; i < 100; i++){
-				Sensor->Param->beta[0] -= Sensor->RawData[Sensor->DataIdx].data[0];
-				Sensor->Param->beta[1] -= Sensor->RawData[Sensor->DataIdx].data[1];
-				Sensor->Param->beta[2] -= Sensor->RawData[Sensor->DataIdx].data[2];
+			Sensor->Param->beta[0] -= Sensor->RawData[Sensor->DataIdx].data[0];
+			Sensor->Param->beta[1] -= Sensor->RawData[Sensor->DataIdx].data[1];
+			Sensor->Param->beta[2] -= Sensor->RawData[Sensor->DataIdx].data[2];
+
+			if(init_gyro == 99){
+				Sensor->Param->beta[0] /= 100;
+				Sensor->Param->beta[1] /= 100;
+				Sensor->Param->beta[2] /= 100;
+
+				printf("Calibration du Gyroscope done \n");
 			}
 
-			Sensor->Param->beta[0] /= 100;
-			Sensor->Param->beta[1] /= 100;
-			Sensor->Param->beta[2] /= 100;
-
-			printf("Calibration du Gyroscope done \n");
+			init_gyro++;
 		}
 		else{
 			 // x', y', z' a zero
