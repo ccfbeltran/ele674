@@ -59,11 +59,21 @@ void *SensorTask ( void *ptr ) {
 		//Calibration du Gyroscope
 		else if(Sensor->type == GYROSCOPE && init_gyro < 100){
 
-			Sensor->Param->beta[0] -= Sensor->RawData[Sensor->DataIdx].data[0];
-			Sensor->Param->beta[1] -= Sensor->RawData[Sensor->DataIdx].data[1];
-			Sensor->Param->beta[2] -= Sensor->RawData[Sensor->DataIdx].data[2];
+			if(Sensor->RawData[Sensor->DataIdx].data[0] > 0)
+				Sensor->RawData[Sensor->DataIdx].data[0] = -Sensor->RawData[Sensor->DataIdx].data[0];
+
+			if(Sensor->RawData[Sensor->DataIdx].data[1] > 0)
+				Sensor->RawData[Sensor->DataIdx].data[1] = -Sensor->RawData[Sensor->DataIdx].data[1];
+
+			if(Sensor->RawData[Sensor->DataIdx].data[2] > 0)
+				Sensor->RawData[Sensor->DataIdx].data[2] = -Sensor->RawData[Sensor->DataIdx].data[2];
+
+			Sensor->Param->beta[0] += Sensor->RawData[Sensor->DataIdx].data[0];
+			Sensor->Param->beta[1] += Sensor->RawData[Sensor->DataIdx].data[1];
+			Sensor->Param->beta[2] += Sensor->RawData[Sensor->DataIdx].data[2];
 
 			if(init_gyro == 99){
+
 				Sensor->Param->beta[0] /= 100;
 				Sensor->Param->beta[1] /= 100;
 				Sensor->Param->beta[2] /= 100;

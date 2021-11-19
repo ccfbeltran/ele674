@@ -161,7 +161,7 @@ int ControlInit (ControlStruct *Control) {
 	int retval = 0;
 
 	pthread_barrier_init(&ControlStartBarrier, NULL,  2);
-	pthread_spin_init(&(Control->AttitudeDesire->AttitudeLock), PTHREAD_PROCESS_PRIVATE);
+	//pthread_spin_init(&(Control->AttitudeDesire->AttitudeLock), PTHREAD_PROCESS_PRIVATE);
 	sem_init(&ControlTimerSem, 0, 1);
 
 	retval = pthread_create(&Control->ControlThread, NULL, ControlTask, Control);

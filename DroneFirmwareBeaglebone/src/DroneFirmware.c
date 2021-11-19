@@ -212,7 +212,7 @@ int main(int argc, char *argv[]) {
 
 	StartTimer();
 
-	MotorStart();
+	//MotorStart();
 	printf("%s MotorStart() finish\n", __FUNCTION__);
 	SensorsStart();
 	printf("%s SensorsStart() finish\n", __FUNCTION__);
@@ -260,7 +260,7 @@ int main(int argc, char *argv[]) {
 
 	MavlinkStop(&Mavlink);
 	ControlStop(&Control);
-	MotorStop(&Motor);
+	//MotorStop(&Motor);
 	SensorsLogsStop(SensorTab);
 	SensorsStop(SensorTab);
 	AttitudeStop(AttitudeTab);
