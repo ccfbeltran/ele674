@@ -22,6 +22,90 @@ uint8_t  LogActivated  	  	= 0;
 uint8_t  numLogOutput 	  	= 0;
 uint8_t  init_gyro 			= 0;
 
+static double coordonne_mag		= 0.0;
+static double mag_range			= 0.0;
+
+static int last_idx_mag 		= 0;
+static int last_idx_sonar 		= 0;
+static int last_idx_accel 		= 0;
+static int last_idx_baro 		= 0;
+
+static double borne_accel_max_x 	= 0.0;
+static double borne_accel_max_y 	= 0.0;
+static double borne_accel_max_z 	= 0.0;
+
+void Detection_erreur(SensorStruct *Sensor){
+
+	double norm = 0;
+
+	switch(Sensor->type){
+		case SONAR:
+			//Si la valeur final presente est superieur que 6.118 metre, prend l'ancienne valeur valid
+				if(Sensor->Data[Sensor->DataIdx].Data[0] > SONAR_MAX_METER){
+					Sensor->Data[Sensor->DataIdx].Data[0] = Sensor->Data[last_idx_sonar].Data[0];
+				}
+				else{
+					last_idx_sonar = Sensor->DataIdx;
+				}
+
+		break;
+
+		case MAGNETOMETRE:
+				//norme de x,y,z
+				norm = sqrt(Sensor->Data[Sensor->DataIdx].Data[0]*Sensor->Data[Sensor->DataIdx].Data[0]
+				+Sensor->Data[Sensor->DataIdx].Data[1]*Sensor->Data[Sensor->DataIdx].Data[1]
+				+Sensor->Data[Sensor->DataIdx].Data[2]*Sensor->Data[Sensor->DataIdx].Data[2]);
+
+				coordonne_mag += norm; //accumulation des norme
+
+				//On a recueilli les 100 valeur
+				if(Sensor->DataIdx  == DATABUFSIZE-1){
+					coordonne_mag /= DATABUFSIZE; //moyenne
+
+					if (mag_range < coordonne_mag) //Remplace si la nouvelle moyenne est superieur que l'ancienne borne
+					{
+						mag_range = coordonne_mag;
+					}
+					coordonne_mag = 0.0;
+				}
+				//Si la norme presente est superieur que la borne, prend l'ancienne valeur valid
+				if(norm > mag_range){
+					Sensor->Data[Sensor->DataIdx].Data[0] = Sensor->Data[last_idx_sonar].Data[0];
+					Sensor->Data[Sensor->DataIdx].Data[1] = Sensor->Data[last_idx_sonar].Data[1];
+					Sensor->Data[Sensor->DataIdx].Data[2] = Sensor->Data[last_idx_sonar].Data[2];
+				}
+				else{
+					last_idx_sonar = Sensor->DataIdx;
+				}
+
+		break;
+		case ACCELEROMETRE:
+
+			//Initialisation des bornes avec la calibration
+			if(borne_accel_max_x == 0 && borne_accel_max_y == 0 && borne_accel_max_z == 0){
+					borne_accel_max_x = (Sensor->Param->alpha[0][0]*LIMITE_ACCEL_MS2) + Sensor->Param->beta[0]; //alpha_x*max_speed + beta_x
+					borne_accel_max_y = (Sensor->Param->alpha[1][1]*LIMITE_ACCEL_MS2) + Sensor->Param->beta[1]; //alpha_y*max_speed + beta_y
+					borne_accel_max_z = (Sensor->Param->alpha[2][2]*LIMITE_ACCEL_MS2) + Sensor->Param->beta[2]; //alpha_z*max_speed + beta_z
+			}
+			//Si les valeur finale presente est superieur que la borne, prend l'ancienne valeur valid
+			if(abs(Sensor->Data[Sensor->DataIdx].Data[0]) > borne_accel_max_x ||
+					abs(Sensor->Data[Sensor->DataIdx].Data[1]) > borne_accel_max_y ||
+					abs(Sensor->Data[Sensor->DataIdx].Data[2]) > borne_accel_max_z)
+			{
+					Sensor->Data[Sensor->DataIdx].Data[0] = Sensor->Data[last_idx_accel].Data[0];
+					Sensor->Data[Sensor->DataIdx].Data[1] = Sensor->Data[last_idx_accel].Data[1];
+					Sensor->Data[Sensor->DataIdx].Data[2] = Sensor->Data[last_idx_accel].Data[2];
+			}
+			else{
+				last_idx_accel = Sensor->DataIdx;
+			}
+
+		break;
+	}
+
+}
+
+
 void *SensorTask ( void *ptr ) {
 /* A faire! */
 /* Tache qui sera instancié pour chaque sensor. Elle s'occupe d'aller */
@@ -46,7 +130,7 @@ void *SensorTask ( void *ptr ) {
 		pthread_spin_lock(&(Sensor->DataLock));
 		Sensor->RawData[Sensor->DataIdx]=tampon_raw_data;
 
-		if(Sensor->type == SONAR || Sensor->type == BAROMETRE){
+		if(Sensor->type == SONAR || Sensor->type == BAROMETRE){ //pas de calibration
 
 			Sensor->Data[Sensor->DataIdx].Data[0] = 0;
 
@@ -57,22 +141,33 @@ void *SensorTask ( void *ptr ) {
 			Sensor->Data[Sensor->DataIdx].Data[0] += Sensor->Param->beta[0];
 		}
 		//Calibration du Gyroscope
-		else if(Sensor->type == GYROSCOPE && !init_gyro){
-			init_gyro = 1;
+		else if(Sensor->type == GYROSCOPE && init_gyro < 100){
 
-			for(int i = 0; i < 100; i++){
-				Sensor->Param->beta[0] -= Sensor->RawData[Sensor->DataIdx].data[0];
-				Sensor->Param->beta[1] -= Sensor->RawData[Sensor->DataIdx].data[1];
-				Sensor->Param->beta[2] -= Sensor->RawData[Sensor->DataIdx].data[2];
+			if(Sensor->RawData[Sensor->DataIdx].data[0] > 0)
+				Sensor->RawData[Sensor->DataIdx].data[0] = -Sensor->RawData[Sensor->DataIdx].data[0];
+
+			if(Sensor->RawData[Sensor->DataIdx].data[1] > 0)
+				Sensor->RawData[Sensor->DataIdx].data[1] = -Sensor->RawData[Sensor->DataIdx].data[1];
+
+			if(Sensor->RawData[Sensor->DataIdx].data[2] > 0)
+				Sensor->RawData[Sensor->DataIdx].data[2] = -Sensor->RawData[Sensor->DataIdx].data[2];
+
+			Sensor->Param->beta[0] += Sensor->RawData[Sensor->DataIdx].data[0];
+			Sensor->Param->beta[1] += Sensor->RawData[Sensor->DataIdx].data[1];
+			Sensor->Param->beta[2] += Sensor->RawData[Sensor->DataIdx].data[2];
+
+			if(init_gyro == 99){
+
+				Sensor->Param->beta[0] /= 100;
+				Sensor->Param->beta[1] /= 100;
+				Sensor->Param->beta[2] /= 100;
+
+				printf("Calibration du Gyroscope done \n");
 			}
 
-			Sensor->Param->beta[0] /= 100;
-			Sensor->Param->beta[1] /= 100;
-			Sensor->Param->beta[2] /= 100;
-
-			printf("Calibration du Gyroscope done \n");
+			init_gyro++;
 		}
-		else{
+		else{ //calibration des autres capteurs
 			 // x', y', z' a zero
 			Sensor->Data[Sensor->DataIdx].Data[0] = 0;
 			Sensor->Data[Sensor->DataIdx].Data[1] = 0;
@@ -81,14 +176,16 @@ void *SensorTask ( void *ptr ) {
 			//Calcul la matrice alpha avec x,y,z. ------> x, y, z = Rawdata*conversion
 			for(int i = 0; i < 3; i++){
 				Sensor->Data[Sensor->DataIdx].Data[0] += Sensor->Param->alpha[0][i]*(Sensor->RawData[Sensor->DataIdx].data[i]*Sensor->Param->Conversion);
-				Sensor->Data[Sensor->DataIdx].Data[1] += Sensor->Param->alpha[0][i]*(Sensor->RawData[Sensor->DataIdx].data[i]*Sensor->Param->Conversion);
-				Sensor->Data[Sensor->DataIdx].Data[2] += Sensor->Param->alpha[0][i]*(Sensor->RawData[Sensor->DataIdx].data[i]*Sensor->Param->Conversion);
+				Sensor->Data[Sensor->DataIdx].Data[1] += Sensor->Param->alpha[1][i]*(Sensor->RawData[Sensor->DataIdx].data[i]*Sensor->Param->Conversion);
+				Sensor->Data[Sensor->DataIdx].Data[2] += Sensor->Param->alpha[2][i]*(Sensor->RawData[Sensor->DataIdx].data[i]*Sensor->Param->Conversion);
 			}
 			//x', y', z' + Beta
 			Sensor->Data[Sensor->DataIdx].Data[0] += Sensor->Param->beta[0];
 			Sensor->Data[Sensor->DataIdx].Data[1] += Sensor->Param->beta[1];
 			Sensor->Data[Sensor->DataIdx].Data[2] += Sensor->Param->beta[2];
 		}
+
+		Detection_erreur(Sensor);
 		/*on ajuste le time stamp*/
 		Sensor->Data[Sensor->DataIdx].TimeDelay= tampon_raw_data.timestamp-time_stamp_avant;
 		/*on sauvegarde la valeur precedante*/
@@ -230,17 +327,17 @@ void *SensorLogTask ( void *ptr ) {
 			printf("Sensor  :     TimeStamp  SampleDelay  Status  SampleNum   Raw Sample Data  =>        Converted Sample Data               Norme\n");
 		else switch (tpRaw.type) {
 				case ACCELEROMETRE :	norm = sqrt(tpNav.Data[0]*tpNav.Data[0]+tpNav.Data[1]*tpNav.Data[1]+tpNav.Data[2]*tpNav.Data[2]);
-										printf("Accel   : (%09llu)-(%09u)  %2d     %8u   %04X  %04X  %04X  =>  %10.5lf  %10.5lf  %10.5lf  =  %10.5lf\n", tpRaw.timestamp, tpNav.TimeDelay, tpRaw.status, tpRaw.ech_num, (uint16_t) tpRaw.data[0], (uint16_t) tpRaw.data[1], (uint16_t) tpRaw.data[2], tpNav.Data[0], tpNav.Data[1], tpNav.Data[2], norm);
+										printf("Accel   : (%09llu)-(%09u)  %2d     %8u   %d  %d  %d  =>  %10.5lf  %10.5lf  %10.5lf  =  %10.5lf, borne_x = %lf, borne_y = %lf, borne_z = %lf\n", tpRaw.timestamp, tpNav.TimeDelay, tpRaw.status, tpRaw.ech_num, tpRaw.data[0], tpRaw.data[1], tpRaw.data[2], tpNav.Data[0], tpNav.Data[1], tpNav.Data[2], norm, borne_accel_max_x, borne_accel_max_y, borne_accel_max_z);
 										break;
 				case GYROSCOPE :		norm = sqrt(tpNav.Data[0]*tpNav.Data[0]+tpNav.Data[1]*tpNav.Data[1]+tpNav.Data[2]*tpNav.Data[2]);
 										printf("Gyro    : (%09llu)-(%09u)  %2d     %8u   %04X  %04X  %04X  =>  %10.5lf  %10.5lf  %10.5lf  =  %10.5lf\n", tpRaw.timestamp, tpNav.TimeDelay, tpRaw.status, tpRaw.ech_num, (uint16_t) tpRaw.data[0], (uint16_t) tpRaw.data[1], (uint16_t) tpRaw.data[2], tpNav.Data[0], tpNav.Data[1], tpNav.Data[2], norm);
 										break;
-				case SONAR :			printf("Sonar   : (%09llu)-(%09u)  %2d     %8u   %04X              =>  %10.5lf\n", tpRaw.timestamp, tpNav.TimeDelay, tpRaw.status, tpRaw.ech_num, (uint16_t) tpRaw.data[0], tpNav.Data[0]);
+				case SONAR :			printf("Sonar   : (%09llu)-(%09u)  %2d     %8u   %d              =>  %10.5lf\n", tpRaw.timestamp, tpNav.TimeDelay, tpRaw.status, tpRaw.ech_num, tpRaw.data[0], tpNav.Data[0]);
 										break;
 				case BAROMETRE :		printf("Barom   : (%09llu)-(%09u)  %2d     %8u   %04X              =>  %10.5lf\n", tpRaw.timestamp, tpNav.TimeDelay, tpRaw.status, tpRaw.ech_num, (uint16_t) tpRaw.data[0], tpNav.Data[0]);
 										break;
 				case MAGNETOMETRE :		norm = sqrt(tpNav.Data[0]*tpNav.Data[0]+tpNav.Data[1]*tpNav.Data[1]+tpNav.Data[2]*tpNav.Data[2]);
-										printf("Magneto : (%09llu)-(%09u)  %2d     %8u   %04X  %04X  %04X  =>  %10.5lf  %10.5lf  %10.5lf  =  %10.5lf\n", tpRaw.timestamp, tpNav.TimeDelay, tpRaw.status, tpRaw.ech_num, (uint16_t) tpRaw.data[0], (uint16_t) tpRaw.data[1], (uint16_t) tpRaw.data[2], tpNav.Data[0], tpNav.Data[1], tpNav.Data[2], norm);
+										printf("Magneto : (%09llu)-(%09u)  %2d     %8u   %d  %d   %d	=>  %10.5lf  %10.5lf  %10.5lf  =  %10.5lf, mag = %lf, coor = %lf\n", tpRaw.timestamp, tpNav.TimeDelay, tpRaw.status, tpRaw.ech_num,  tpRaw.data[0],  tpRaw.data[1],  tpRaw.data[2], tpNav.Data[0], tpNav.Data[1], tpNav.Data[2], norm, mag_range, coordonne_mag);
 										break;
 			 }
 		numLogOutput++;
