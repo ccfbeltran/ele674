@@ -231,10 +231,10 @@ int main(int argc, char *argv[]) {
 		ch = tolower(getchar_nonblock());
 		if (ch > 0) {
 			printf("%c", ch);
-			printf("Motor0=%d \n",Motor.pwm[0]);
-			printf("Motor1=%d\n",Motor.pwm[1]);
-			printf("Motor2=%d\n",Motor.pwm[2]);
-			printf("Motor3=%d\n",Motor.pwm[3]);
+//			printf("Motor0=%d \n",Motor.pwm[0]);
+//			printf("Motor1=%d\n",Motor.pwm[1]);
+//			printf("Motor2=%d\n",Motor.pwm[2]);
+//			printf("Motor3=%d\n",Motor.pwm[3]);
 			switch (ch) {
 			case '1' :	Motor.pwm[0] += (Motor.pwm[0] < 510) ? 1 : 0;
 						break;
