@@ -37,7 +37,9 @@ static double borne_accel_max_z 	= 0.0;
 void Detection_erreur(SensorStruct *Sensor){
 
 	double norm = 0;
-
+//pour la procedure du sonar, on collecte la donné et on verifie si elle est plus grande que  SONAR_MAX_METER
+// si elle est plus grande que SONAR_MAX_METER, on prends la derniere ancienne valeur valide
+// dans le cas contraire,on prends un copie de l'index qui contenait la derniere valeur valide
 	switch(Sensor->type){
 		case SONAR:
 			//Si la valeur final presente est superieur que 6.118 metre, prend l'ancienne valeur valid
@@ -49,6 +51,10 @@ void Detection_erreur(SensorStruct *Sensor){
 				}
 
 		break;
+//Pour la procedure du Magnetometre, on calcule la norme avec les données recoltées au paravant, par la suite, on l'addition dans la variable (coordonne_mag).
+// La variable coordonne_mag va faire une accumulation de la norme pour obtenir une moyenne par après
+// Par la suite, on va voir si la moyenne  est plus grande que notre marge_moyenne (mag_range) si c'est le cas, alors  la moyenne deviendra notre nouvelle moyenne.
+//Par la suite, si la norme presente est plus grande que la marge moyenne, alors il y a une erreur et on va prendre les dernieres donées valables. Dans le cas contraire,on  prends un copie de l'index qui contenait la derniere valeur valide
 
 		case MAGNETOMETRE:
 				//norme de x,y,z
@@ -79,6 +85,10 @@ void Detection_erreur(SensorStruct *Sensor){
 				}
 
 		break;
+
+//Pour la procedure  du Accelerometre, on va tout d'abord initialiser les bornes avec la calibration.Cette borne va être definir par la fonction : alpha_valeur*max_speed + beta_valeur
+//Par la suite, on va verifier si notre valeur presentes sont superieur que la borne. Si c'est le cas, alors on va prendre l'ancienne valeur valide.
+//Dans le cas contraire, on va copier l'index de la derniere valeur valide.
 		case ACCELEROMETRE:
 
 			//Initialisation des bornes avec la calibration
