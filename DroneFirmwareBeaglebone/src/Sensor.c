@@ -28,7 +28,7 @@ static double mag_range			= 0.0;
 static int last_idx_mag 		= 0;
 static int last_idx_sonar 		= 0;
 static int last_idx_accel 		= 0;
-static int last_idx_baro 		= 0;
+
 
 static double borne_accel_max_x 	= 0.0;
 static double borne_accel_max_y 	= 0.0;
@@ -37,13 +37,26 @@ static double borne_accel_max_z 	= 0.0;
 void Detection_erreur(SensorStruct *Sensor){
 
 	double norm = 0;
-//pour la procedure du sonar, on collecte la donné et on verifie si elle est plus grande que  SONAR_MAX_METER
-// si elle est plus grande que SONAR_MAX_METER, on prends la derniere ancienne valeur valide
+//Description:
+
+//Pour la procedure du sonar, on collecte la donné et on verifie si elle est plus grande que  qui represente 6.118 metre
+// si elle est plus grande que SONAR_MAX_METER ou plus petit que SONAR_MIN_METER, on prends la derniere valeur valide (Methode Ignorer la mesure)
 // dans le cas contraire,on prends un copie de l'index qui contenait la derniere valeur valide
+
+//Justification :
+
+//On a choisie la methode de Ignorer la mesure, car elle etait la plus facile a implementer que les autres methode.
+//De ce fait, on ignore la mesure quand on depasse et garde l'ancien.
+// les valeurs SONAR_MAX_METER et SONAR_MIN_METER on été respectivement choisices dans les acetates du cours et le datasheet du sonar.
+
 	switch(Sensor->type){
 		case SONAR:
-			//Si la valeur final presente est superieur que 6.118 metre, prend l'ancienne valeur valid
+
 				if(Sensor->Data[Sensor->DataIdx].Data[0] > SONAR_MAX_METER){
+					Sensor->Data[Sensor->DataIdx].Data[0] = Sensor->Data[last_idx_sonar].Data[0];
+				}
+				else if(Sensor->Data[Sensor->DataIdx].Data[0] < SONAR_MIN_METER)
+				{
 					Sensor->Data[Sensor->DataIdx].Data[0] = Sensor->Data[last_idx_sonar].Data[0];
 				}
 				else{
@@ -51,10 +64,19 @@ void Detection_erreur(SensorStruct *Sensor){
 				}
 
 		break;
-//Pour la procedure du Magnetometre, on calcule la norme avec les données recoltées au paravant, par la suite, on l'addition dans la variable (coordonne_mag).
-// La variable coordonne_mag va faire une accumulation de la norme pour obtenir une moyenne par après
-// Par la suite, on va voir si la moyenne  est plus grande que notre marge_moyenne (mag_range) si c'est le cas, alors  la moyenne deviendra notre nouvelle moyenne.
-//Par la suite, si la norme presente est plus grande que la marge moyenne, alors il y a une erreur et on va prendre les dernieres donées valables. Dans le cas contraire,on  prends un copie de l'index qui contenait la derniere valeur valide
+//Description:
+
+//Pour la procedure du Magnetometre, on calcule la norme avec les données recoltées, par la suite, on l'addition dans la variable (coordonne_mag) jusqu'a 100 valeur.
+// La variable coordonne_mag va faire une accumulation de la norme pour obtenir une moyenne en divisant par 100
+// Par la suite, on va voir si la moyenne  est plus grande que notre borne (mag_range) si c'est le cas, alors notre borne deviendra notre nouvelle moyenne.
+//Par la suite, si la norme presente est plus grande que la borne, alors il y a une erreur et
+//on va prendre les dernieres données valides (Methode Ignorer la mesure) avec le derniere index qui contenait la derniere valeur valid.
+
+//Justification:
+
+//On choisie la methode de faire l'accumulation des valeur, car avec la methode de faire une borne par rapport au 55uT, nous a donnees des complication.
+//On n'arriver pas a comparer les recus en aval par le capteur avec les 55uT converti en raw_to_unity ou en uT.
+//On a aussi decider de updater la borne a chaque 100 valeur, car si on pivoter le drone, les donnes en aval change de beaucoup.
 
 		case MAGNETOMETRE:
 				//norme de x,y,z
@@ -76,26 +98,38 @@ void Detection_erreur(SensorStruct *Sensor){
 				}
 				//Si la norme presente est superieur que la borne, prend l'ancienne valeur valid
 				if(norm > mag_range){
-					Sensor->Data[Sensor->DataIdx].Data[0] = Sensor->Data[last_idx_sonar].Data[0];
-					Sensor->Data[Sensor->DataIdx].Data[1] = Sensor->Data[last_idx_sonar].Data[1];
-					Sensor->Data[Sensor->DataIdx].Data[2] = Sensor->Data[last_idx_sonar].Data[2];
+					Sensor->Data[Sensor->DataIdx].Data[0] = Sensor->Data[last_idx_mag].Data[0];
+					Sensor->Data[Sensor->DataIdx].Data[1] = Sensor->Data[last_idx_mag].Data[1];
+					Sensor->Data[Sensor->DataIdx].Data[2] = Sensor->Data[last_idx_mag].Data[2];
 				}
 				else{
-					last_idx_sonar = Sensor->DataIdx;
+					last_idx_mag = Sensor->DataIdx;
 				}
 
 		break;
 
-//Pour la procedure  du Accelerometre, on va tout d'abord initialiser les bornes avec la calibration.Cette borne va être definir par la fonction : alpha_valeur*max_speed + beta_valeur
-//Par la suite, on va verifier si notre valeur presentes sont superieur que la borne. Si c'est le cas, alors on va prendre l'ancienne valeur valide.
-//Dans le cas contraire, on va copier l'index de la derniere valeur valide.
+//Description:
+
+//Pour la procedure du Accelerometre, on va tout d'abord initialiser les bornes avec la calibration. Cette borne va être definir par la fonction: alpha_valeur_axe_maximal*15.8683 m/s^2 + beta_valeur_axe
+//Cette fonction va etre appliquer pour x,y et z.
+//Par la suite, on va verifier si notre valeur presentes est superieur que la borne. Si c'est le cas, alors on va prendre l'ancienne valeur valide (Methode Ignorer la mesure).
+
+//La valeur 15.8663 m/s^2 a été respectivement choisices dans les acetates du cours 4 diapo 40.
+
+//Justification:
+
+//On choisie de definir l'acceleration maximal et faire la calibration par rapport a cette acceleration, car on avait vue qu'on avait -1*g dans l'axes des z avec raw_data*conversion_en_ms2,
+//si le drone etait stationnaire.
+
+//Donc si on pouvait voir -1g dans un des axes, on pouvait le comparer avec l'acceleration maximale que le drone pouvais avoir.
+//On a faite la calibration avec l'acceleration maximale pour chacune des axes pour avoir n
 		case ACCELEROMETRE:
 
 			//Initialisation des bornes avec la calibration
 			if(borne_accel_max_x == 0 && borne_accel_max_y == 0 && borne_accel_max_z == 0){
-					borne_accel_max_x = (Sensor->Param->alpha[0][0]*LIMITE_ACCEL_MS2) + Sensor->Param->beta[0]; //alpha_x*max_speed + beta_x
-					borne_accel_max_y = (Sensor->Param->alpha[1][1]*LIMITE_ACCEL_MS2) + Sensor->Param->beta[1]; //alpha_y*max_speed + beta_y
-					borne_accel_max_z = (Sensor->Param->alpha[2][2]*LIMITE_ACCEL_MS2) + Sensor->Param->beta[2]; //alpha_z*max_speed + beta_z
+					borne_accel_max_x = (Sensor->Param->alpha[0][0]*LIMITE_ACCEL_MS2) + Sensor->Param->beta[0]; //alpha_x_max*max_speed + beta_x
+					borne_accel_max_y = (Sensor->Param->alpha[1][1]*LIMITE_ACCEL_MS2) + Sensor->Param->beta[1]; //alpha_y_max*max_speed + beta_y
+					borne_accel_max_z = (Sensor->Param->alpha[2][2]*LIMITE_ACCEL_MS2) + Sensor->Param->beta[2]; //alpha_z_max*max_speed + beta_z
 			}
 			//Si les valeur finale presente est superieur que la borne, prend l'ancienne valeur valid
 			if(abs(Sensor->Data[Sensor->DataIdx].Data[0]) > borne_accel_max_x ||

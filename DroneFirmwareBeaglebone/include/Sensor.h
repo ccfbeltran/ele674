@@ -56,7 +56,9 @@ enum { ACCELEROMETRE, GYROSCOPE, MAGNETOMETRE, BAROMETRE, SONAR, NUM_SENSORS };
 #define TEMP_SENSITIVITY	(333.87)
 #define SONAR_uS_TO_M		(0.000172215)
 
-#define SONAR_MAX_METER 	6.194
+#define SONAR_MAX_METER 	6.218
+#define SONAR_MIN_METER 	0.05//0.03+2 /minimun plus la resolution
+
 #define LIMITE_ACCEL_MS2    15.8683
 
 #define T1	((double)((uint16_t) 0x6D4E))	// ( 27982.0)
